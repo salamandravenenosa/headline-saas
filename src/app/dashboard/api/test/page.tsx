@@ -3,6 +3,11 @@
 import React, { useState } from 'react';
 import { Play, Send, Code, Terminal, Clock, ShieldCheck } from 'lucide-react';
 
+interface ApiResponseData {
+    status: number | string;
+    data: any;
+}
+
 export default function ApiTestPage() {
     const [endpoint, setEndpoint] = useState('/api/v1/headlines/generate');
     const [method, setMethod] = useState('POST');
@@ -13,7 +18,7 @@ export default function ApiTestPage() {
         style: "black"
     }, null, 2));
 
-    const [response, setResponse] = useState<any>(null);
+    const [response, setResponse] = useState<ApiResponseData | null>(null);
     const [loading, setLoading] = useState(false);
     const [duration, setDuration] = useState<number | null>(null);
 
@@ -125,7 +130,7 @@ export default function ApiTestPage() {
                             {response && (
                                 <div className="flex gap-4">
                                     <div className="flex items-center gap-1.5">
-                                        <div className={`w-2 h-2 rounded-full ${response.status >= 400 ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                                        <div className={`w-2 h-2 rounded-full ${typeof response.status === 'number' && response.status >= 400 ? 'bg-red-500' : 'bg-green-500'}`}></div>
                                         <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">{response.status}</span>
                                     </div>
                                     <div className="flex items-center gap-1.5 text-white/40">

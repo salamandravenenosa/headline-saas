@@ -9,7 +9,7 @@ export class WebhookService {
             .eq('is_active', true)
             .contains('events', [eventType]);
 
-        if (!webhooks) return;
+        if (!webhooks || webhooks.length === 0) return;
 
         const promises = webhooks.map(webhook =>
             fetch(webhook.target_url, {

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ExperimentService } from '@/modules/experiments/experiments.service';
 import { z } from 'zod';
 
+export const runtime = 'nodejs';
+
 const trackSchema = z.object({
     variationId: z.string().uuid(),
     type: z.enum(['impression', 'conversion'])

@@ -1,24 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/shared/lib/supabase';
+import { Subscription, UsageMeter, Plan } from '@/types';
+
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
     const orgId = req.headers.get('x-organization-id');
+
+    if (!orgId) {
+        return NextResponse.json({ error: 'Missing organization ID' }, { status: 400 });
+    }
 
     // 1. Get usage meter
     const { data: meter } = await supabaseAdmin
         .from('usage_meters')
         .select('monthly_requests_count, last_reset_at')
         .eq('organization_id', orgId)
-        .single();
+        .maybeSingle() as { data: UsageMeter | null };
 
     // 2. Get subscription & plan limits
     const { data: sub } = await supabaseAdmin
         .from('subscriptions')
-        .select('plans(*)')
+        .select('*, plans(*)')
         .eq('organization_id', orgId)
-        .single();
+        .maybeSingle() as { data: (Subscription & { plans: Plan }) | null };
 
-    // @ts-ignore
     const plan = sub?.plans || { name: 'Free', monthly_request_limit: 100 };
     const consumed = meter?.monthly_requests_count || 0;
 

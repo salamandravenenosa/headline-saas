@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/shared/lib/supabase';
 import { calculateHeadlineScore } from '@/modules/headlines/score.engine';
 import { z } from 'zod';
 
+export const runtime = 'nodejs';
+
 const versionSchema = z.object({
     content: z.string().min(1),
     label: z.string().optional()
@@ -24,7 +26,7 @@ export async function POST(
             .select('id')
             .eq('id', params.id)
             .eq('organization_id', orgId)
-            .single();
+            .maybeSingle();
 
         if (!headline) {
             return NextResponse.json({ error: 'Headline not found' }, { status: 404 });
@@ -40,9 +42,9 @@ export async function POST(
                 version_label: label
             })
             .select()
-            .single();
+            .maybeSingle();
 
-        if (error) throw error;
+        if (error || !version) throw error || new Error('Failed to create version');
 
         await supabaseAdmin
             .from('headline_scores')

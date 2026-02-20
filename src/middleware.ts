@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { hashApiKey } from './shared/utils/crypto';
 import { supabaseAdmin } from './shared/lib/supabase';
 import { redis } from './shared/lib/redis';
+import { Subscription, Plan } from './types';
 
 export async function middleware(request: NextRequest) {
     // Only apply to API v1 routes
@@ -24,10 +25,10 @@ export async function middleware(request: NextRequest) {
     }
 
     const apiKey = authHeader.split(' ')[1];
-    const keyHash = hashApiKey(apiKey);
+    const keyHash = await hashApiKey(apiKey); // Fixed: Added await
 
     // 1. Authenticate & Tenant Lookup (Cache-first)
-    const cacheKey = `auth:key-v2:${keyHash}`;
+    const cacheKey = `auth:key-v3:${keyHash}`;
     let authData = await redis.get(cacheKey) as { orgId: string, keyId: string } | null;
 
     if (!authData) {
@@ -37,7 +38,7 @@ export async function middleware(request: NextRequest) {
             .eq('key_hash', keyHash)
             .eq('is_active', true)
             .is('deleted_at', null)
-            .single();
+            .maybeSingle(); // Fixed: Use maybeSingle for better error handling
 
         if (error || !data) {
             return NextResponse.json(
@@ -56,12 +57,6 @@ export async function middleware(request: NextRequest) {
     const usageKey = `usage:org:${orgId}:month`;
     const currentUsage = await redis.incr(usageKey);
 
-    // Periodically sync usage back to Supabase (e.g. every 10 requests or background job)
-    if (currentUsage % 10 === 0) {
-        // We'll do this in the route handler or a separate background function to keep middleware fast
-        // For now, middleware just blocks if limit exceeded in cache
-    }
-
     // Check plan limits (fetch plan from cache or DB)
     const planLimitKey = `plan:limit:${orgId}`;
     let limit = await redis.get(planLimitKey) as number | null;
@@ -69,11 +64,10 @@ export async function middleware(request: NextRequest) {
     if (limit === null) {
         const { data: sub } = await supabaseAdmin
             .from('subscriptions')
-            .select('plans(monthly_request_limit)')
+            .select('*, plans(*)')
             .eq('organization_id', orgId)
-            .single();
+            .maybeSingle() as { data: (Subscription & { plans: Plan }) | null };
 
-        // @ts-ignore - Supabase nested join types
         limit = sub?.plans?.monthly_request_limit || 100; // Default Free
         await redis.set(planLimitKey, limit, { ex: 86400 });
     }

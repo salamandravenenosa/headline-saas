@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { HeadlineService } from '@/modules/headlines/headlines.service';
 import { z } from 'zod';
 
+export const runtime = 'nodejs';
+
 const generateSchema = z.object({
     niche: z.string().min(1),
     briefing: z.string().min(1),
@@ -29,7 +31,7 @@ export async function POST(req: NextRequest) {
     } catch (error: any) {
         console.error('[GENERATE_ERROR]', error);
 
-        if (error.message === 'INSUFFICIENT_CREDITS') {
+        if (error.message === 'INSUFFICIENT_CREDITS' || error.message === 'LIMIT_EXCEEDED') {
             return NextResponse.json(
                 { success: false, error: { code: 'FORBIDDEN', message: 'Insufficient credits or limit reached' } },
                 { status: 403 }

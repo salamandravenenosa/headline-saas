@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/shared/lib/supabase';
-import { generateApiKey } from '@/shared/utils/crypto';
+import { generateApiKey, hashApiKey } from '@/shared/utils/crypto';
 import { z } from 'zod';
+
+export const runtime = 'nodejs';
 
 const createKeySchema = z.object({
     name: z.string().min(1).max(50),
@@ -17,7 +19,8 @@ export async function POST(req: NextRequest) {
         const { count, error: countError } = await supabaseAdmin
             .from('api_keys')
             .select('*', { count: 'exact', head: true })
-            .eq('organization_id', organizationId);
+            .eq('organization_id', organizationId)
+            .is('deleted_at', null);
 
         if (countError) throw countError;
         if (count !== null && count >= 3) {
@@ -28,7 +31,8 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Generate key
-        const { key, hash, prefix } = generateApiKey();
+        const { key, prefix } = generateApiKey();
+        const hash = await hashApiKey(key);
 
         const { error } = await supabaseAdmin
             .from('api_keys')
@@ -65,7 +69,8 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabaseAdmin
         .from('api_keys')
         .select('id, name, prefix, last_used_at, created_at')
-        .eq('organization_id', orgId);
+        .eq('organization_id', orgId)
+        .is('deleted_at', null);
 
     if (error) return NextResponse.json({ error }, { status: 500 });
 

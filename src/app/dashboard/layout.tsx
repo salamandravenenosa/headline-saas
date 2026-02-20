@@ -3,10 +3,10 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Key, PlayCircle, BookOpen, Dashboard as DashIcon, LogOut, ChevronRight } from 'lucide-react';
+import { Key, PlayCircle, BookOpen, LayoutDashboard, LogOut, ChevronRight } from 'lucide-react';
 
 const navItems = [
-    { name: 'Geral', href: '/dashboard', icon: DashIcon },
+    { name: 'Geral', href: '/dashboard', icon: LayoutDashboard },
     { name: 'API Management', href: '/dashboard/api', icon: Key },
     { name: 'API Playground', href: '/dashboard/api/test', icon: PlayCircle },
     { name: 'Documentação', href: '/dashboard/api/docs', icon: BookOpen },
@@ -39,7 +39,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 className={`flex items-center justify-between px-6 py-4 rounded-2xl transition-all group ${isActive ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/10' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                             >
                                 <div className="flex items-center gap-4">
-                                    {/* @ts-ignore */}
                                     <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-white/40 group-hover:text-blue-400'}`} />
                                     <span className="text-xs font-black uppercase tracking-widest">{item.name}</span>
                                 </div>

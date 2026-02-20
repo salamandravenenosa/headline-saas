@@ -2,9 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { Activity, Zap, TrendingUp, Layers } from 'lucide-react';
+import Link from 'next/link';
+
+interface DashboardStats {
+    totalHeadlines: number;
+    activeExperiments: number;
+    totalCreditsConsumed: number;
+    period: string;
+}
 
 export default function DashboardPage() {
-    const [stats, setStats] = useState<any>(null);
+    const [stats, setStats] = useState<DashboardStats | null>(null);
     const orgId = "00000000-0000-0000-0000-000000000000"; // Mock
 
     useEffect(() => {
@@ -91,9 +99,4 @@ export default function DashboardPage() {
             </div>
         </div>
     );
-}
-
-// Minimal Link replacement if not using next/link in this specific file scope
-function Link({ children, href, className }: any) {
-    return <a href={href} className={className}>{children}</a>;
 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/shared/lib/supabase';
 
+export const runtime = 'nodejs';
+
 export async function DELETE(
     req: NextRequest,
     { params }: { params: { id: string } }
@@ -11,7 +13,7 @@ export async function DELETE(
     try {
         const { error } = await supabaseAdmin
             .from('api_keys')
-            .delete()
+            .update({ deleted_at: new Date().toISOString() })
             .eq('id', params.id)
             .eq('organization_id', orgId);
 

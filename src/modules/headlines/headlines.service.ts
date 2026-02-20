@@ -2,15 +2,29 @@ import { supabaseAdmin } from '@/shared/lib/supabase';
 import { calculateHeadlineScore } from './score.engine';
 import { Groq } from 'groq-sdk';
 import { WebhookService } from '../webhooks/webhooks.service';
+import { Headline } from '@/types';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+export interface GeneratePayload {
+    niche: string;
+    briefing: string;
+    style: 'white' | 'black';
+}
+
+export interface GenerationResult {
+    id: string;
+    content: string;
+    score: number;
+    breakdown: any;
+}
 
 export class HeadlineService {
     static async generate(
         orgId: string,
         keyId: string | null,
-        { niche, briefing, style }: { niche: string, briefing: string, style: string }
-    ) {
+        { niche, briefing, style }: GeneratePayload
+    ): Promise<GenerationResult> {
         const start = performance.now();
 
         try {
@@ -41,9 +55,9 @@ export class HeadlineService {
                     score: total
                 })
                 .select()
-                .single();
+                .maybeSingle() as { data: Headline | null, error: any };
 
-            if (hError) throw hError;
+            if (hError || !headline) throw hError || new Error('Failed to persist headline');
 
             // 4. Usage Logging (Sync back to DB)
             const duration = Math.round(performance.now() - start);
@@ -57,10 +71,11 @@ export class HeadlineService {
             });
 
             // 5. Atomic Meter Update
-            await supabaseAdmin.rpc('increment_usage_meter', { org_id: orgId });
+            const { error: rpcError } = await supabaseAdmin.rpc('increment_usage_meter', { org_id: orgId });
+            if (rpcError) console.error('[RPC_ERROR] Meter increment failed:', rpcError);
 
             // 6. External Triggers (Webhooks)
-            const result = {
+            const result: GenerationResult = {
                 id: headline.id,
                 content,
                 score: total,

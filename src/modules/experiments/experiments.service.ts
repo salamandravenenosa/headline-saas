@@ -1,14 +1,19 @@
 import { supabaseAdmin } from '@/shared/lib/supabase';
 
+export interface VariationInput {
+    headlineVersionId: string;
+    weight: number;
+}
+
 export class ExperimentService {
-    static async create(orgId: string, name: string, variations: { headlineVersionId: string, weight: number }[]) {
+    static async create(orgId: string, name: string, variations: VariationInput[]) {
         const { data: experiment, error: eError } = await supabaseAdmin
             .from('experiments')
             .insert({ organization_id: orgId, name })
             .select()
-            .single();
+            .maybeSingle();
 
-        if (eError) throw eError;
+        if (eError || !experiment) throw eError || new Error('Failed to create experiment');
 
         const variationsToInsert = variations.map(v => ({
             experiment_id: experiment.id,

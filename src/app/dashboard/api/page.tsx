@@ -1,10 +1,11 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Key, Plus, Copy, Trash2, Check, ExternalLink, Activity, Shield } from 'lucide-react';
+import { Key, Plus, Copy, Trash2, Check, Activity, Shield } from 'lucide-react';
+import { ApiKey } from '@/types';
 
 export default function ApiManagementPage() {
-    const [keys, setKeys] = useState<any[]>([]);
+    const [keys, setKeys] = useState<ApiKey[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newKeyName, setNewKeyName] = useState('');
@@ -39,8 +40,8 @@ export default function ApiManagementPage() {
             const json = await res.json();
             if (json.success) {
                 setUsage({
-                    current: json.data.credits.consumed,
-                    limit: 1000 // In production, get from plan
+                    current: json.data.usage.consumed, // Adjusted to match API structure
+                    limit: json.data.plan.limit
                 });
             }
         } catch (e) { console.error(e); }
@@ -110,9 +111,8 @@ export default function ApiManagementPage() {
                         <p className="text-[10px] font-black uppercase tracking-widest text-white/40 flex items-center gap-2">
                             <Activity className="w-3 h-3" /> Consumo do Período
                         </p>
-                        <h2 className="text-3xl font-black">{usage.current} <span className="text-white/20 text-xl">/ {usage.limit}</span></h2>
+                        <h2 className="text-3xl font-black">{usage.current} <span className="text-white/10 text-xl">/ {usage.limit}</span></h2>
                     </div>
-                    <span className="text-xs font-black uppercase tracking-widest text-blue-400">Plano Pro</span>
                 </div>
                 <div className="h-3 bg-white/5 rounded-full overflow-hidden">
                     <div
@@ -121,7 +121,7 @@ export default function ApiManagementPage() {
                     />
                 </div>
                 <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest">
-                    Seu limite será reiniciado em 12 dias.
+                    Seu limite será reiniciado automaticamente no próximo ciclo.
                 </p>
             </div>
 
@@ -134,7 +134,6 @@ export default function ApiManagementPage() {
                                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-white/40">Nome</th>
                                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-white/40">Chave (Prefixo)</th>
                                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-white/40">Criada em</th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-white/40">Último uso</th>
                                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-white/40 text-right">Ações</th>
                             </tr>
                         </thead>
@@ -154,9 +153,6 @@ export default function ApiManagementPage() {
                                     <td className="px-8 py-6 text-sm text-white/40">
                                         {new Date(key.created_at).toLocaleDateString()}
                                     </td>
-                                    <td className="px-8 py-6 text-sm text-white/40">
-                                        {key.last_used_at ? new Date(key.last_used_at).toLocaleDateString() : 'Nunca'}
-                                    </td>
                                     <td className="px-8 py-6 text-right space-x-2">
                                         <button
                                             onClick={() => handleRevoke(key.id)}
@@ -169,7 +165,7 @@ export default function ApiManagementPage() {
                             ))}
                             {keys.length === 0 && !loading && (
                                 <tr>
-                                    <td colSpan={5} className="px-8 py-24 text-center">
+                                    <td colSpan={4} className="px-8 py-24 text-center">
                                         <div className="flex flex-col items-center gap-4 text-white/10">
                                             <Key className="w-12 h-12" />
                                             <p className="font-black italic uppercase tracking-widest text-sm">Nenhuma chave gerada</p>
