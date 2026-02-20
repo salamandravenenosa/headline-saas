@@ -88,7 +88,7 @@ export default function ApiManagementPage() {
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div className="space-y-1">
                     <h1 className="text-4xl font-black italic tracking-tighter">Gerenciar <span className="text-blue-500">API</span></h1>
-                    <p className="text-white/40 font-medium">Controle o acesso programático ao seu headline engine.</p>
+                    <p className="text-white/40 font-medium">Controle o acesso programático ao seu copywriting engine QyiCopy.</p>
                 </div>
                 <button
                     onClick={() => {

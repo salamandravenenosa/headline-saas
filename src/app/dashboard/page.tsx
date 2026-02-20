@@ -35,7 +35,7 @@ export default function DashboardPage() {
                         <Zap className="w-6 h-6 text-blue-500" />
                     </div>
                     <div>
-                        <p className="text-[10px] uppercase font-black tracking-widest text-white/40">Headlines Geradas</p>
+                        <p className="text-[10px] uppercase font-black tracking-widest text-white/40">Cópias Geradas</p>
                         <p className="text-3xl font-black">{stats?.totalHeadlines || 0}</p>
                     </div>
                 </div>

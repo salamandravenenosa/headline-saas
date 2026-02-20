@@ -9,7 +9,7 @@ export default function ApiDocsPage() {
                     <BookOpen className="w-3 h-3" /> API Reference
                 </div>
                 <h1 className="text-4xl font-black italic tracking-tighter">Documentação <span className="text-blue-500">Técnica</span></h1>
-                <p className="text-white/40 font-medium italic">Integre o poder do Headline Engine diretamente no seu fluxo de trabalho.</p>
+                <p className="text-white/40 font-medium italic">Integre o poder do copywriting engine QyiCopy diretamente no seu fluxo de trabalho.</p>
             </header>
 
             {/* Base URL Section */}
@@ -19,7 +19,7 @@ export default function ApiDocsPage() {
                 </h2>
                 <div className="relative group">
                     <div className="bg-black/40 border border-white/10 rounded-2xl px-8 py-6 font-mono text-blue-300">
-                        https://headline-engine.vercel.app/api/v1
+                        https://qyicopy.vercel.app/api/v1
                     </div>
                 </div>
             </div>
@@ -65,7 +65,7 @@ export default function ApiDocsPage() {
                 </div>
                 <div className="p-10 bg-black/20 overflow-auto">
                     <pre className="font-mono text-sm text-blue-200/80 leading-relaxed">
-                        {`curl -X POST https://headline-engine.vercel.app/api/v1/headlines/generate \\
+                        {`curl -X POST https://qyicopy.vercel.app/api/v1/headlines/generate \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -d '{

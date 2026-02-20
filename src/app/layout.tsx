@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-    title: "Headline Engine - API v1",
-    description: "Advanced Headline Generation as a Service",
+    title: "QyiCopy - API v1",
+    description: "Advanced Copywriting Engine as a Service",
 };
 
 export default function RootLayout({
