@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google"; // Fixed import
+import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/shared/context/AuthContext";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
+const outfit = Outfit({ subsets: ["latin"], variable: '--font-outfit' });
 
 export const metadata: Metadata = {
-    title: "QyiCopy - API v1",
-    description: "Advanced Copywriting Engine as a Service",
+    title: "QyiCopy | Inteligência Artificial em Copywriting",
+    description: "A plataforma definitiva de IA para geração de headlines e copy de alta conversão. Escalabilidade via API e testes A/B integrados.",
 };
+
+import { Toaster } from 'react-hot-toast';
 
 export default function RootLayout({
     children,
@@ -15,8 +19,25 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en">
-            <body className={inter.className}>{children}</body>
+        <html lang="pt-BR" className="scroll-smooth">
+            <body className={`${inter.variable} ${outfit.variable} font-sans bg-[#020617] text-white antialiased`}>
+                <AuthProvider>
+                    {children}
+                    <Toaster
+                        position="top-right"
+                        toastOptions={{
+                            style: {
+                                background: '#0f172a',
+                                color: '#fff',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '16px',
+                                fontSize: '12px',
+                                fontFamily: 'var(--font-outfit)',
+                            },
+                        }}
+                    />
+                </AuthProvider>
+            </body>
         </html>
     );
 }

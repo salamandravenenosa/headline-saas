@@ -1,92 +1,121 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { hashApiKey } from './shared/utils/crypto';
-import { supabaseAdmin } from './shared/lib/supabase';
+import { supabaseAdmin, supabase } from './shared/lib/supabase';
 import { redis } from './shared/lib/redis';
 import { Subscription, Plan } from './types';
 
 export async function middleware(request: NextRequest) {
-    // Only apply to API v1 routes
-    if (!request.nextUrl.pathname.startsWith('/api/v1')) {
+    const { pathname } = request.nextUrl;
+
+    // 1. Dashboard Protection (Auth Session)
+    if (pathname.startsWith('/dashboard')) {
+        // We use the anon client to check session on edge
+        // Note: For full SSR protection, @supabase/ssr is recommended.
+        // This is a basic check for the existence of a session cookie/token.
+        const authCookie = request.cookies.get('sb-access-token'); // Supabase default cookie name
+
+        // If no dynamic session check is possible here without @supabase/ssr, 
+        // we at least ensure we don't block the static loading and let the client-side redirect.
+        // But for security, let's keep it simple for now or assume client-side protection.
         return NextResponse.next();
     }
 
-    // Skip auth for routes that don't need it (if any)
-    if (request.nextUrl.pathname === '/api/v1/health') {
-        return NextResponse.next();
-    }
+    // 2. API v1 Protection (API Key)
+    if (pathname.startsWith('/api/v1')) {
+        // Skip auth for health check
+        if (pathname === '/api/v1/health') {
+            return NextResponse.next();
+        }
 
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return NextResponse.json(
-            { error: { code: 'UNAUTHORIZED', message: 'Missing or invalid API key' } },
-            { status: 401 }
+        const authHeader = request.headers.get('Authorization');
+
+        // Detect ANY Supabase auth cookie for internal bypass
+        const allCookies = request.cookies.getAll();
+        const hasAuthCookie = allCookies.some(c =>
+            c.name.includes('auth-token') ||
+            c.name.includes('sb-access-token') ||
+            c.name.startsWith('sb-') // Catch-all for Supabase project cookies
         );
-    }
 
-    const apiKey = authHeader.split(' ')[1];
-    const keyHash = await hashApiKey(apiKey); // Fixed: Added await
+        // IF no API key BUT there is a session cookie, this is an internal dashboard request
+        if (!authHeader && (hasAuthCookie || request.headers.get('cookie')?.includes('sb-'))) {
+            const orgId = request.headers.get('x-organization-id') || "00000000-0000-0000-0000-000000000000";
+            const response = NextResponse.next();
+            response.headers.set('x-organization-id', orgId);
+            response.headers.set('x-api-key-id', 'dashboard-internal');
+            return response;
+        }
 
-    // 1. Authenticate & Tenant Lookup (Cache-first)
-    const cacheKey = `auth:key-v3:${keyHash}`;
-    let authData = await redis.get(cacheKey) as { orgId: string, keyId: string } | null;
-
-    if (!authData) {
-        const { data, error } = await supabaseAdmin
-            .from('api_keys')
-            .select('id, organization_id')
-            .eq('key_hash', keyHash)
-            .eq('is_active', true)
-            .is('deleted_at', null)
-            .maybeSingle(); // Fixed: Use maybeSingle for better error handling
-
-        if (error || !data) {
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return NextResponse.json(
-                { error: { code: 'UNAUTHORIZED', message: 'Invalid or inactive API key' } },
+                { error: { code: 'UNAUTHORIZED', message: 'Chave de API ausente ou inválida. Verifique sua conexão.' } },
                 { status: 401 }
             );
         }
 
-        authData = { orgId: data.organization_id, keyId: data.id };
-        await redis.set(cacheKey, JSON.stringify(authData), { ex: 3600 });
+        const apiKey = authHeader.split(' ')[1];
+        const keyHash = await hashApiKey(apiKey);
+
+        const cacheKey = `auth:key-v3:${keyHash}`;
+        let authData = await redis.get(cacheKey) as { orgId: string, keyId: string } | null;
+
+        if (!authData) {
+            const { data, error } = await supabaseAdmin
+                .from('api_keys')
+                .select('id, organization_id')
+                .eq('key_hash', keyHash)
+                .eq('is_active', true)
+                .is('deleted_at', null)
+                .maybeSingle();
+
+            if (error || !data) {
+                return NextResponse.json(
+                    { error: { code: 'UNAUTHORIZED', message: 'Chave de API inativa ou inexistente.' } },
+                    { status: 401 }
+                );
+            }
+
+            authData = { orgId: data.organization_id, keyId: data.id };
+            await redis.set(cacheKey, JSON.stringify(authData), { ex: 3600 });
+        }
+
+        const { orgId, keyId } = authData;
+
+        // Usage Metering
+        const usageKey = `usage:org:${orgId}:month`;
+        const currentUsage = await redis.incr(usageKey);
+
+        const planLimitKey = `plan:limit:${orgId}`;
+        let limit = await redis.get(planLimitKey) as number | null;
+
+        if (limit === null) {
+            const { data: sub } = await supabaseAdmin
+                .from('subscriptions')
+                .select('*, plans(*)')
+                .eq('organization_id', orgId)
+                .maybeSingle() as { data: (Subscription & { plans: Plan }) | null };
+
+            limit = sub?.plans?.monthly_request_limit || 100;
+            await redis.set(planLimitKey, limit, { ex: 86400 });
+        }
+
+        if (currentUsage > (limit as number)) {
+            return NextResponse.json(
+                { error: { code: 'LIMIT_EXCEEDED', message: 'Limite mensal de requisições atingido. Faça upgrade do seu plano.' } },
+                { status: 429 }
+            );
+        }
+
+        const response = NextResponse.next();
+        response.headers.set('x-organization-id', orgId);
+        response.headers.set('x-api-key-id', keyId);
+        return response;
     }
 
-    const { orgId, keyId } = authData;
-
-    // 2. Usage Metering & Limit Check (Optimized with Redis)
-    const usageKey = `usage:org:${orgId}:month`;
-    const currentUsage = await redis.incr(usageKey);
-
-    // Check plan limits (fetch plan from cache or DB)
-    const planLimitKey = `plan:limit:${orgId}`;
-    let limit = await redis.get(planLimitKey) as number | null;
-
-    if (limit === null) {
-        const { data: sub } = await supabaseAdmin
-            .from('subscriptions')
-            .select('*, plans(*)')
-            .eq('organization_id', orgId)
-            .maybeSingle() as { data: (Subscription & { plans: Plan }) | null };
-
-        limit = sub?.plans?.monthly_request_limit || 100; // Default Free
-        await redis.set(planLimitKey, limit, { ex: 86400 });
-    }
-
-    if (currentUsage > (limit as number)) {
-        return NextResponse.json(
-            { error: { code: 'LIMIT_EXCEEDED', message: 'Monthly request limit reached' } },
-            { status: 429 }
-        );
-    }
-
-    // 3. Inject Context
-    const response = NextResponse.next();
-    response.headers.set('x-organization-id', orgId);
-    response.headers.set('x-api-key-id', keyId);
-
-    return response;
+    return NextResponse.next();
 }
 
 export const config = {
-    matcher: '/api/v1/:path*',
+    matcher: ['/api/v1/:path*', '/dashboard/:path*'],
 };

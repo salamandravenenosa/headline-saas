@@ -29,17 +29,30 @@ export class HeadlineService {
 
         try {
             // 1. IA Prompt Generation
-            const prompt = `Gere uma headline de alta conversão para o nicho ${niche}. 
-            Estilo: ${style === 'black' ? 'Agressivo, direto, copy preta' : 'Curiosidade, suave, copy branca'}.
-            Briefing: ${briefing}.
-            Retorne APENAS a headline, sem aspas.`;
+            const systemPrompt = `Você é um copywriter especialista em conversão de alto nível.
+Sua tarefa é criar uma headline poderosa seguindo estritamente as instruções abaixo.
+
+ESTILO: ${style === 'black' ? 'BLACK - Agressivo, direto, toca na dor latente, foca em lucro imediato e promessas fortes.' : 'WHITE - Suave, focado em autoridade, confiança, curiosidade inteligente e storytelling.'}
+
+NICHO: ${niche}
+BRIEFING/CONTEXTO: ${briefing}
+
+REGRAS CRÍTICAS:
+1. Responda APENAS com a headline.
+2. Não use aspas, introduções ou explicações.
+3. Use gatilhos mentais adequados ao estilo escolhido.
+4. A headline deve ser específica para o nicho e briefing fornecidos.`;
 
             const completion = await groq.chat.completions.create({
-                messages: [{ role: 'user', content: prompt }],
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: `Gere a headline para o nicho ${niche} seguindo o briefing: ${briefing}.` }
+                ],
                 model: 'llama3-70b-8192',
+                temperature: 0.8,
             });
 
-            const content = completion.choices[0]?.message?.content || '';
+            const content = completion.choices[0]?.message?.content?.replace(/^"|"$/g, '') || '';
 
             // 2. Internal Scoring
             const { total, breakdown } = calculateHeadlineScore(content);
