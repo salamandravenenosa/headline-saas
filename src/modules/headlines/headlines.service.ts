@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/shared/lib/supabase';
-import { calculateHeadlineScore } from './score.engine';
+import { calculateHeadlineScore, ScoreBreakdown } from './score.engine';
 import { Groq } from 'groq-sdk';
 import { WebhookService } from '../webhooks/webhooks.service';
 import { Headline } from '@/types';
@@ -16,7 +16,7 @@ export interface GenerationResult {
     id: string;
     content: string;
     score: number;
-    breakdown: any;
+    breakdown: ScoreBreakdown;
 }
 
 export class HeadlineService {
